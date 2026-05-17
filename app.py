@@ -1,5 +1,5 @@
 """
-AVIATOR AI PRO - Dashboard Streamlit
+AVIATOR AI PRO - Dashboard Streamlit com Iframe Integrado
 Ferramenta de análise de padrões Aviator com IA 99% precisa
 """
 
@@ -52,6 +52,7 @@ st.markdown("""
         font-size: 24px;
         font-weight: bold;
         margin: 1rem 0;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
     }
     
     .sinal-negativo {
@@ -63,6 +64,7 @@ st.markdown("""
         font-size: 24px;
         font-weight: bold;
         margin: 1rem 0;
+        box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
     }
     
     .sinal-neutro {
@@ -74,6 +76,7 @@ st.markdown("""
         font-size: 24px;
         font-weight: bold;
         margin: 1rem 0;
+        box-shadow: 0 0 20px rgba(255, 170, 0, 0.5);
     }
     
     .sinal-aguarde {
@@ -85,6 +88,14 @@ st.markdown("""
         font-size: 24px;
         font-weight: bold;
         margin: 1rem 0;
+        box-shadow: 0 0 20px rgba(0, 102, 255, 0.5);
+    }
+    
+    .iframe-container {
+        border: 2px solid #259DFF;
+        border-radius: 1rem;
+        overflow: hidden;
+        background-color: #1B1B1B;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -113,6 +124,9 @@ if 'ultimo_resultado' not in st.session_state:
 
 if 'ultima_previsao' not in st.session_state:
     st.session_state.ultima_previsao = None
+
+if 'url_aviator' not in st.session_state:
+    st.session_state.url_aviator = "https://playnabets.com/casino/spribe/ap_spribe_8369"
 
 # ============================================================================
 # HEADER
@@ -279,134 +293,161 @@ with col2:
 st.divider()
 
 # ============================================================================
-# SEÇÃO DE ENTRADA DE DADOS
-# ============================================================================
-
-st.subheader("📥 Entrada de Dados")
-
-col1, col2, col3 = st.columns([2, 1, 1])
-
-with col1:
-    dados_entrada = st.text_input(
-        "Cole aqui os dados capturados (ex: 2.45x 14:32:15)",
-        placeholder="Exemplo: 5.67x 14:32:15"
-    )
-
-with col2:
-    if st.button("📤 Processar", use_container_width=True):
-        if dados_entrada:
-            vela = st.session_state.capturador.processar_dados_brutos(dados_entrada)
-            
-            if vela:
-                # Adicionar ao banco de dados
-                st.session_state.banco.adicionar_vela(vela)
-                
-                # Adicionar à IA
-                st.session_state.ia.adicionar_vela(
-                    vela['multiplicador'],
-                    vela['timestamp'],
-                    vela['data']
-                )
-                
-                # Atualizar último resultado
-                st.session_state.ultimo_resultado = vela
-                
-                st.success(f"✅ Vela {vela['multiplicador']}x adicionada!")
-                st.rerun()
-            else:
-                st.error("❌ Não foi possível processar os dados")
-        else:
-            st.warning("⚠️ Digite os dados primeiro")
-
-with col3:
-    if st.button("🧪 Teste", use_container_width=True):
-        # Adicionar dados de teste
-        import random
-        mult = round(random.uniform(1.0, 50.0), 2)
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        
-        vela = {
-            'multiplicador': mult,
-            'timestamp': timestamp,
-            'data': datetime.now().strftime("%Y-%m-%d")
-        }
-        
-        st.session_state.banco.adicionar_vela(vela)
-        st.session_state.ia.adicionar_vela(mult, timestamp, vela['data'])
-        st.session_state.ultimo_resultado = vela
-        
-        st.info(f"🧪 Teste: {mult}x adicionado")
-        st.rerun()
-
-st.divider()
-
-# ============================================================================
-# SEÇÃO DE FEEDBACK
-# ============================================================================
-
-st.subheader("👍 Feedback - Calibração da IA")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    if st.button("👍 ACERTOU", use_container_width=True, key="acertou"):
-        if st.session_state.ultimo_resultado:
-            st.session_state.ia.fornecer_feedback(
-                True,
-                st.session_state.ultimo_resultado['cor']
-            )
-            
-            # Adicionar ao banco
-            st.session_state.banco.adicionar_feedback({
-                'tipo': 'manual',
-                'multiplicador': st.session_state.ultimo_resultado['multiplicador'],
-                'cor_prevista': st.session_state.ultima_previsao.get('proxima_cor', 'desconhecida') if st.session_state.ultima_previsao else 'desconhecida',
-                'cor_real': st.session_state.ultimo_resultado.get('cor', 'desconhecida'),
-                'foi_correto': True
-            })
-            
-            st.success("✅ Feedback registrado! IA está aprendendo...")
-            time.sleep(1)
-            st.rerun()
-        else:
-            st.warning("⚠️ Nenhum resultado para calibrar")
-
-with col2:
-    if st.button("👎 ERROU", use_container_width=True, key="errou"):
-        if st.session_state.ultimo_resultado:
-            st.session_state.ia.fornecer_feedback(
-                False,
-                st.session_state.ultimo_resultado['cor']
-            )
-            
-            # Adicionar ao banco
-            st.session_state.banco.adicionar_feedback({
-                'tipo': 'manual',
-                'multiplicador': st.session_state.ultimo_resultado['multiplicador'],
-                'cor_prevista': st.session_state.ultima_previsao.get('proxima_cor', 'desconhecida') if st.session_state.ultima_previsao else 'desconhecida',
-                'cor_real': st.session_state.ultimo_resultado.get('cor', 'desconhecida'),
-                'foi_correto': False
-            })
-            
-            st.error("❌ Feedback registrado! IA está se ajustando...")
-            time.sleep(1)
-            st.rerun()
-        else:
-            st.warning("⚠️ Nenhum resultado para calibrar")
-
-st.divider()
-
-# ============================================================================
 # ABAS
 # ============================================================================
 
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "📈 Gráficos", "🎪 Histórico", "⚙️ Controles"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["🎮 Aviator ao Vivo", "📊 Dashboard", "📈 Gráficos", "🎪 Histórico", "⚙️ Controles"])
 
 # ============================================================================
-# TAB 1: DASHBOARD
+# TAB 1: AVIATOR AO VIVO COM IFRAME
 # ============================================================================
 
 with tab1:
+    st.subheader("🎮 Aviator ao Vivo + Sinais da IA")
+    
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        st.markdown("### 📥 URL do Aviator")
+        url_input = st.text_input(
+            "Cole aqui o link do Aviator:",
+            value=st.session_state.url_aviator,
+            placeholder="https://playnabets.com/casino/spribe/ap_spribe_8369"
+        )
+        
+        if url_input != st.session_state.url_aviator:
+            st.session_state.url_aviator = url_input
+            st.rerun()
+    
+    with col2:
+        if st.button("🔄 Recarregar", use_container_width=True):
+            st.rerun()
+    
+    st.divider()
+    
+    # Iframe do Aviator
+    st.markdown("### 🎯 Jogo Aviator")
+    
+    try:
+        st.components.v1.iframe(
+            src=st.session_state.url_aviator,
+            height=600,
+            scrolling=True
+        )
+    except Exception as e:
+        st.error(f"Erro ao carregar iframe: {e}")
+        st.info("💡 Dica: Alguns navegadores podem bloquear iframes. Tente:")
+        st.code("1. Desabilitar bloqueador de anúncios\n2. Usar modo incógnito\n3. Usar outro navegador")
+    
+    st.divider()
+    
+    st.markdown("### 📥 Captura de Dados Manual")
+    st.info("Se o iframe não capturar automaticamente, cole os dados aqui:")
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        dados_entrada = st.text_input(
+            "Cole aqui os dados capturados (ex: 2.45x 14:32:15)",
+            placeholder="Exemplo: 5.67x 14:32:15"
+        )
+    
+    with col2:
+        if st.button("📤 Processar", use_container_width=True):
+            if dados_entrada:
+                vela = st.session_state.capturador.processar_dados_brutos(dados_entrada)
+                
+                if vela:
+                    st.session_state.banco.adicionar_vela(vela)
+                    st.session_state.ia.adicionar_vela(
+                        vela['multiplicador'],
+                        vela['timestamp'],
+                        vela['data']
+                    )
+                    st.session_state.ultimo_resultado = vela
+                    st.success(f"✅ Vela {vela['multiplicador']}x adicionada!")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ Não foi possível processar os dados")
+            else:
+                st.warning("⚠️ Digite os dados primeiro")
+    
+    with col3:
+        if st.button("🧪 Teste", use_container_width=True):
+            import random
+            mult = round(random.uniform(1.0, 50.0), 2)
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            
+            vela = {
+                'multiplicador': mult,
+                'timestamp': timestamp,
+                'data': datetime.now().strftime("%Y-%m-%d")
+            }
+            
+            st.session_state.banco.adicionar_vela(vela)
+            st.session_state.ia.adicionar_vela(mult, timestamp, vela['data'])
+            st.session_state.ultimo_resultado = vela
+            
+            st.info(f"🧪 Teste: {mult}x adicionado")
+            time.sleep(1)
+            st.rerun()
+    
+    st.divider()
+    
+    st.markdown("### 👍 Feedback - Calibração da IA")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("👍 ACERTOU", use_container_width=True, key="acertou_tab1"):
+            if st.session_state.ultimo_resultado:
+                st.session_state.ia.fornecer_feedback(
+                    True,
+                    st.session_state.ultimo_resultado.get('cor', 'desconhecida')
+                )
+                
+                st.session_state.banco.adicionar_feedback({
+                    'tipo': 'manual',
+                    'multiplicador': st.session_state.ultimo_resultado['multiplicador'],
+                    'cor_prevista': st.session_state.ultima_previsao.get('proxima_cor', 'desconhecida') if st.session_state.ultima_previsao else 'desconhecida',
+                    'cor_real': st.session_state.ultimo_resultado.get('cor', 'desconhecida'),
+                    'foi_correto': True
+                })
+                
+                st.success("✅ Feedback registrado! IA está aprendendo...")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.warning("⚠️ Nenhum resultado para calibrar")
+    
+    with col2:
+        if st.button("👎 ERROU", use_container_width=True, key="errou_tab1"):
+            if st.session_state.ultimo_resultado:
+                st.session_state.ia.fornecer_feedback(
+                    False,
+                    st.session_state.ultimo_resultado.get('cor', 'desconhecida')
+                )
+                
+                st.session_state.banco.adicionar_feedback({
+                    'tipo': 'manual',
+                    'multiplicador': st.session_state.ultimo_resultado['multiplicador'],
+                    'cor_prevista': st.session_state.ultima_previsao.get('proxima_cor', 'desconhecida') if st.session_state.ultima_previsao else 'desconhecida',
+                    'cor_real': st.session_state.ultimo_resultado.get('cor', 'desconhecida'),
+                    'foi_correto': False
+                })
+                
+                st.error("❌ Feedback registrado! IA está se ajustando...")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.warning("⚠️ Nenhum resultado para calibrar")
+
+# ============================================================================
+# TAB 2: DASHBOARD
+# ============================================================================
+
+with tab2:
     st.subheader("📊 Dashboard de Análise")
     
     stats = st.session_state.banco.obter_estatisticas_gerais()
@@ -427,7 +468,6 @@ with tab1:
     
     st.divider()
     
-    # Velas por cor
     col1, col2, col3 = st.columns(3)
     
     velas_por_cor = stats.get('velas_por_cor', {})
@@ -445,10 +485,10 @@ with tab1:
         st.metric("🔴 Velas Rosas", rosas)
 
 # ============================================================================
-# TAB 2: GRÁFICOS
+# TAB 3: GRÁFICOS
 # ============================================================================
 
-with tab2:
+with tab3:
     st.subheader("📈 Gráficos de Análise")
     
     velas = st.session_state.banco.obter_ultimas_velas(100)
@@ -457,7 +497,6 @@ with tab2:
         df = pd.DataFrame(velas)
         df['multiplicador'] = df['multiplicador'].astype(float)
         
-        # Gráfico de linha
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             y=df['multiplicador'],
@@ -478,7 +517,6 @@ with tab2:
         
         st.plotly_chart(fig, use_container_width=True)
         
-        # Gráfico de pizza - Distribuição de cores
         stats = st.session_state.banco.obter_estatisticas_gerais()
         velas_por_cor = stats.get('velas_por_cor', {})
         
@@ -500,10 +538,10 @@ with tab2:
         st.info("Nenhum dado para exibir gráficos")
 
 # ============================================================================
-# TAB 3: HISTÓRICO
+# TAB 4: HISTÓRICO
 # ============================================================================
 
-with tab3:
+with tab4:
     st.subheader("🎪 Histórico de Velas")
     
     velas = st.session_state.banco.obter_ultimas_velas(50)
@@ -518,10 +556,10 @@ with tab3:
         st.info("Nenhuma vela capturada ainda")
 
 # ============================================================================
-# TAB 4: CONTROLES
+# TAB 5: CONTROLES
 # ============================================================================
 
-with tab4:
+with tab5:
     st.subheader("⚙️ Controles e Configurações")
     
     col1, col2 = st.columns(2)
@@ -569,7 +607,7 @@ st.divider()
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.caption("🎯 Aviator AI Pro v1.0")
+    st.caption("🎯 Aviator AI Pro v2.0")
 
 with col2:
     st.caption("🧠 Neuroplasticity Engine")
